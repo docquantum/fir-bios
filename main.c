@@ -68,6 +68,8 @@
 
 extern void audioProcessingInit(void);
 
+extern Int16 oled_start();
+
 volatile int counter = 0;
 
 void main(void)
@@ -82,6 +84,13 @@ void main(void)
 
     /* Initialize I2S */
     EZDSP5502_MCBSP_init();
+
+    oled_start();
+
+    while(1)
+    {
+        // temporary while testing
+    }
 
     /* enable the interrupt with BIOS call */
     C55_enableInt(7); // reference technical manual, I2S2 tx interrupt
