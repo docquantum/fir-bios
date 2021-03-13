@@ -9,7 +9,35 @@
 #include "ezdsp5502.h"
 #include "lcd.h"
 
-Int16 print_char(char c)
+void screen_start()
+{
+
+    /* Initialize  Display */
+    osd9616_init( );
+
+    osd9616_send(0x00,0x2e);     // Deactivate Scrolling
+
+    clear_screen(0);
+    clear_screen(1);
+
+    return;
+}
+
+void select_screen(Uint8 screen)
+{
+    osd9616_send(0x00,0x00);   // Set low column address
+    osd9616_send(0x00,0x10);   // Set high column address
+    osd9616_send(0x00,0xb0+screen); // Set to page 0
+}
+
+void clear_screen(Uint8 screen)
+{
+    select_screen(screen);
+    int i;
+    for(i=0; i<128; i++) osd9616_send(0x40, 0x00);
+}
+
+uint16_t screen_char(char c)
 {
     switch(c)
     {
@@ -119,12 +147,13 @@ Int16 print_char(char c)
             printLetter(0x14, 0x14, 0x14, 0x14);
             break;
         default:
+            return 1;
             break;
     }
     return 0;
 }
 
-Int16 print_string(char* str)
+uint16_t screen_string(char* str)
 {
     int count = 0;
     char* start = str - 1;
@@ -139,7 +168,7 @@ Int16 print_string(char* str)
     }
     while (str != start)
     {
-        print_char(*str);
+        screen_char(*str);
         str--;
     }
     return 0;

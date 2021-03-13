@@ -61,18 +61,26 @@
 #include "stdint.h"
 #include "aic3204.h"
 #include "ezdsp5502_mcbsp.h"
+#include "ezdsp5502_i2cgpio.h"
 #include "csl_mcbsp.h"
 #include "stdio.h"
 #include "string.h"
+#include "graphics.h"
 
 
 extern void audioProcessingInit(void);
-
-extern Int16 oled_start();
+extern void ToggleMute();
+extern uint16_t GetMute();
+extern void SetFilter(Uint8 type);
 
 volatile int counter = 0;
 
+Uint8 sw1State = 0;       // SW1 state
+Uint8 sw2State = 0;       // SW2 state
+Uint8 filterType = 0;
+
 void main(void)
+
 {
     /* Initialize BSL */
     EZDSP5502_init( );
@@ -85,12 +93,11 @@ void main(void)
     /* Initialize I2S */
     EZDSP5502_MCBSP_init();
 
-    oled_start();
-
-    while(1)
-    {
-        // temporary while testing
-    }
+    screen_start();
+    select_screen(0);
+    screen_string("FILTER TYPE: NONE");
+    select_screen(1);
+    screen_string("MUTE: OFF ");
 
     /* enable the interrupt with BIOS call */
     C55_enableInt(7); // reference technical manual, I2S2 tx interrupt
@@ -102,30 +109,101 @@ void main(void)
     LOG_printf(&trace, "Finished Main");
 }
 
+
 Void taskFxn(Arg value_arg)
 {
-    LgUns prevHtime, currHtime;
-    uint32_t delta;
-    float ncycles;
-
-    /* get cpu cycles per htime count */
-    ncycles = CLK_cpuCyclesPerHtime();
 
     while(1)
     {
-        TSK_sleep(1);
-        LOG_printf(&trace, "task running! Time is: %d ticks", (Int)TSK_time());
+        if(!(EZDSP5502_I2CGPIO_readLine(SW0))) // Is SW1 pressed?
+           {
+               if(sw1State)          // Was previous state not pressed?
+               {
+                   filterType++;
+                   if(filterType >= 3)
+                       filterType = 0;
+                   SetFilter(filterType);     // Change filter
+                   select_screen(0);
+                   switch(filterType)
+                   {
+                       case 0:
+                           screen_string("NONE");
+                           break;
+                       case 1:
+                           screen_string("HPF ");
+                           break;
+                       case 2:
+                           screen_string("LPF ");
+                           break;
+                       default:
+                           screen_string("NONE");
+                           break;
+                   }
+                   sw1State = 0;     // Set state to 0 to allow only single press
+               }
+           }
+           else                      // SW1 not pressed
+               sw1State = 1;         // Set state to 1 to allow timer change
 
-        prevHtime = currHtime;
-        currHtime = CLK_gethtime();
+           /* Check SW2 */
+           if(!(EZDSP5502_I2CGPIO_readLine(SW1))) // Is SW2 pressed?
+           {
+               if(sw2State)          // Was previous state not pressed?
+               {
+                   ToggleMute();     // Mute
+                   select_screen(1);
+                   switch(GetMute())
+                   {
+                       case 0:
+                           screen_string("OFF ");
+                           break;
+                       case 1:
+                           screen_string("ON  ");
+                           break;
+                       default:
+                           screen_string("UNK ");
+                           break;
+                   }
 
-        delta = (currHtime - prevHtime) * ncycles;
-        LOG_printf(&trace, "CPU cycles = 0x%x %x", (uint16_t)(delta >> 16), (uint16_t)(delta));
-
+                   sw2State = 0;     // Set state to 0 to allow only single press
+               }
+           }
+           else                      // SW2 not pressed
+               sw2State = 1;         // Set state to 1 to allow tone change
     }
+
+
+
+//    LgUns prevHtime, currHtime;
+//    uint32_t delta;
+//    float ncycles;
+//
+//    /* get cpu cycles per htime count */
+//    ncycles = CLK_cpuCyclesPerHtime();
+//
+//    while(1)
+//    {
+//        TSK_sleep(1);
+//        LOG_printf(&trace, "task running! Time is: %d ticks", (Int)TSK_time());
+//
+//        prevHtime = currHtime;
+//        currHtime = CLK_gethtime();
+//
+//        delta = (currHtime - prevHtime) * ncycles;
+//        LOG_printf(&trace, "CPU cycles = 0x%x %x", (uint16_t)(delta >> 16), (uint16_t)(delta));
+//
+//    }
 }
+
+
+
 
 void myIDLThread(void)
 {
-    counter++;
+
 }
+
+
+
+
+

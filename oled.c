@@ -46,42 +46,4 @@
  *
  *      Start the OSD9616 display
  */
-Int16 oled_start()
-{
-    Int16 i;
-//    Uint16 cmd[10];              // For multibyte commands
-    
-    /* Initialize  Display */
-    osd9616_init( );
-    
-    osd9616_send(0x00,0x2e);     // Deactivate Scrolling
-    
-    osd9616_send(0x00,0x00);   // Set low column address
-    osd9616_send(0x00,0x10);   // Set high column address
-    osd9616_send(0x00,0xb0+0); // Set to page 0
 
-    for(i=0; i<128; i++) osd9616_send(0x40, 0x00);
-
-    osd9616_send(0x00,0x00);   // Set low column address
-    osd9616_send(0x00,0x10);   // Set high column address
-    osd9616_send(0x00,0xb0+1); // Set to page 1
-
-    for(i=0; i<128; i++) osd9616_send(0x40, 0x00);
-    
-    /* Write to page 0 */
-    osd9616_send(0x00,0x00);     // Set low column address
-    osd9616_send(0x00,0x10);     // Set high column address
-    osd9616_send(0x00,0xb0+0);   // Set to page 0
-
-    print_string("FILTER TYPE: HP ");
-    osd9616_send(0x40, 0x00);
-    
-    /* Write to page 2 */ 
-    osd9616_send(0x00,0x00);   // Set low column address
-    osd9616_send(0x00,0x10);   // Set high column address
-    osd9616_send(0x00,0xb0+1); // Set to page 1
-    
-    print_string("MUTE: ON ");
-    osd9616_send(0x40, 0x00);
-    return 0;
-}

@@ -8,7 +8,8 @@
 
 #include "stdint.h"
 
-#define LPF_COEFF_LEN 61
+#define LPF_COEFF_LEN 201
+#define HPF_COEFF_LEN 151
 
 void myfir(const int16_t* input, const int16_t* filterCoeffs, int16_t* output,
            int16_t* delayLine, uint16_t numberOfInputSamples,
