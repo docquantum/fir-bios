@@ -6,7 +6,7 @@
  *
  */
 /*
- *  ======== hello.tcf ========
+ *  ======== bios.tcf ========
  *  Configuration script used to generate the example's configuration files
  */
 
@@ -50,9 +50,6 @@ trace.logType = "circular";
 
 bios.LOG_system.bufLen = 512;
 
-bios.TSK.create("TSK0");
-bios.TSK.instance("TSK0").order = 1;
-bios.TSK.instance("TSK0").fxn = prog.extern("taskFxn");
 bios.HWI.instance("HWI_INT6").fxn = prog.extern("HWI_I2S_Rx");
 bios.HWI.instance("HWI_INT6").useDispatcher = 1;
 bios.HWI.instance("HWI_INT6").interruptMask0 = "all";
@@ -61,6 +58,9 @@ bios.HWI.instance("HWI_INT7").fxn = prog.extern("HWI_I2S_Tx");
 bios.HWI.instance("HWI_INT7").useDispatcher = 1;
 bios.HWI.instance("HWI_INT7").interruptMask0 = "all";
 bios.HWI.instance("HWI_INT7").interruptMask1 = "all";
+bios.IDL.create("IDL0");
+bios.IDL.instance("IDL0").order = 1;
+bios.IDL.instance("IDL0").fxn = prog.extern("FXN_IDL_SWITCH");
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 if (config.hasReportedError == false) {

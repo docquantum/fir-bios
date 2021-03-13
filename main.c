@@ -53,7 +53,6 @@
 #include <clk.h>
 #include <tsk.h>
 #include <gbl.h>
-//#include "clkcfg.h"
 
 #include "bioscfg.h"
 #include "c55.h"
@@ -110,10 +109,10 @@ void main(void)
 }
 
 
-Void taskFxn(Arg value_arg)
+Void FXN_IDL_SWITCH(void)
 {
 
-    while(1)
+//    while(1)
     {
         if(!(EZDSP5502_I2CGPIO_readLine(SW0))) // Is SW1 pressed?
            {
@@ -171,37 +170,8 @@ Void taskFxn(Arg value_arg)
            else                      // SW2 not pressed
                sw2State = 1;         // Set state to 1 to allow tone change
     }
-
-
-
-//    LgUns prevHtime, currHtime;
-//    uint32_t delta;
-//    float ncycles;
-//
-//    /* get cpu cycles per htime count */
-//    ncycles = CLK_cpuCyclesPerHtime();
-//
-//    while(1)
-//    {
-//        TSK_sleep(1);
-//        LOG_printf(&trace, "task running! Time is: %d ticks", (Int)TSK_time());
-//
-//        prevHtime = currHtime;
-//        currHtime = CLK_gethtime();
-//
-//        delta = (currHtime - prevHtime) * ncycles;
-//        LOG_printf(&trace, "CPU cycles = 0x%x %x", (uint16_t)(delta >> 16), (uint16_t)(delta));
-//
-//    }
 }
 
-
-
-
-void myIDLThread(void)
-{
-
-}
 
 
 
