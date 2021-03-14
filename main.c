@@ -1,51 +1,7 @@
 /*
- *  Copyright 2010 by Texas Instruments Incorporated.
- *  @(#) DSP/BIOS_Examples 5,4,1 02-08-2010 (biosEx-j14)
+ * Daniel Shchur
+ * FIR-BIOS Main
  */
-/*
- *  ======== swi.c =======
- *
- */
-
-//#include <std.h>
-//
-//#include <log.h>
-//#include <swi.h>
-//#include <sys.h>
-//
-//#include "swicfg.h"
-//
-//Void swiFxn0(Void);
-//Void swiFxn1(Void);
-//
-///*
-// *  ======== main ========
-// */
-//Void main(Int argc, Char *argv[])
-//{
-//    LOG_printf(&trace,"swi example started!\n");
-//    LOG_printf(&trace,"Main posts SWI0\n");
-//    SWI_post(&SWI0);
-//        LOG_printf(&trace,"Main done!\n");
-//}
-//
-///*
-// *  ======== swiFxn0 ========
-// */
-//Void swiFxn0(Void)
-//{
-//    LOG_printf(&trace,"swiFxn0 posts SWI1\n");
-//        SWI_post(&SWI1);
-//        LOG_printf(&trace,"SWI0 done!\n");
-//}
-//
-///*
-// *  ======== swiFxn1 ========
-// */
-//Void swiFxn1(Void)
-//{
-//        LOG_printf(&trace,"SWI1 done!\n");
-//}
 
 #include <std.h>
 
@@ -62,10 +18,8 @@
 #include "ezdsp5502_mcbsp.h"
 #include "ezdsp5502_i2cgpio.h"
 #include "csl_mcbsp.h"
-#include "stdio.h"
-#include "string.h"
 #include "graphics.h"
-
+#include "led.h"
 
 extern void audioProcessingInit(void);
 extern void ToggleMute();
@@ -83,6 +37,14 @@ void main(void)
 {
     /* Initialize BSL */
     EZDSP5502_init( );
+
+    /* Initialize LEDS */
+    InitLeds();
+    TurnOnLed(0);
+
+    /* Setup I2C GPIOs for Switches */
+    EZDSP5502_I2CGPIO_configLine(SW0, IN);
+    EZDSP5502_I2CGPIO_configLine(SW1, IN);
 
     LOG_enable(&trace);
 
@@ -111,65 +73,76 @@ void main(void)
 
 Void FXN_IDL_SWITCH(void)
 {
-
-//    while(1)
-    {
-        if(!(EZDSP5502_I2CGPIO_readLine(SW0))) // Is SW1 pressed?
+    if(!(EZDSP5502_I2CGPIO_readLine(SW0))) // Is SW1 pressed?
+       {
+           if(sw1State)          // Was previous state not pressed?
            {
-               if(sw1State)          // Was previous state not pressed?
+               filterType++;
+               if(filterType >= 3)
+                   filterType = 0;
+               SetFilter(filterType);     // Change filter
+               select_screen(0);
+               switch(filterType)
                {
-                   filterType++;
-                   if(filterType >= 3)
-                       filterType = 0;
-                   SetFilter(filterType);     // Change filter
-                   select_screen(0);
-                   switch(filterType)
-                   {
-                       case 0:
-                           screen_string("NONE");
-                           break;
-                       case 1:
-                           screen_string("HPF ");
-                           break;
-                       case 2:
-                           screen_string("LPF ");
-                           break;
-                       default:
-                           screen_string("NONE");
-                           break;
-                   }
-                   sw1State = 0;     // Set state to 0 to allow only single press
+                   case 0:
+                       TurnOnLed(0);
+                       TurnOffLed(1);
+                       TurnOffLed(2);
+                       screen_string("NONE");
+                       break;
+                   case 1:
+                       TurnOffLed(0);
+                       TurnOnLed(1);
+                       TurnOffLed(2);
+                       screen_string("HPF ");
+                       break;
+                   case 2:
+                       TurnOffLed(0);
+                       TurnOffLed(1);
+                       TurnOnLed(2);
+                       screen_string("LPF ");
+                       break;
+                   default:
+                       TurnOnLed(0);
+                       TurnOffLed(1);
+                       TurnOffLed(2);
+                       screen_string("UNK ");
+                       break;
                }
+               sw1State = 0;     // Set state to 0 to allow only single press
            }
-           else                      // SW1 not pressed
-               sw1State = 1;         // Set state to 1 to allow timer change
+       }
+       else                      // SW1 not pressed
+           sw1State = 1;         // Set state to 1 to allow timer change
 
-           /* Check SW2 */
-           if(!(EZDSP5502_I2CGPIO_readLine(SW1))) // Is SW2 pressed?
+       /* Check SW2 */
+       if(!(EZDSP5502_I2CGPIO_readLine(SW1))) // Is SW2 pressed?
+       {
+           if(sw2State)          // Was previous state not pressed?
            {
-               if(sw2State)          // Was previous state not pressed?
+               ToggleMute();     // Mute
+               select_screen(1);
+               switch(GetMute())
                {
-                   ToggleMute();     // Mute
-                   select_screen(1);
-                   switch(GetMute())
-                   {
-                       case 0:
-                           screen_string("OFF ");
-                           break;
-                       case 1:
-                           screen_string("ON  ");
-                           break;
-                       default:
-                           screen_string("UNK ");
-                           break;
-                   }
-
-                   sw2State = 0;     // Set state to 0 to allow only single press
+                   case 0:
+                       TurnOffLed(3);
+                       screen_string("OFF ");
+                       break;
+                   case 1:
+                       TurnOnLed(3);
+                       screen_string("ON  ");
+                       break;
+                   default:
+                       TurnOffLed(3);
+                       screen_string("UNK ");
+                       break;
                }
+
+               sw2State = 0;     // Set state to 0 to allow only single press
            }
-           else                      // SW2 not pressed
-               sw2State = 1;         // Set state to 1 to allow tone change
-    }
+       }
+       else                      // SW2 not pressed
+           sw2State = 1;         // Set state to 1 to allow tone change
 }
 
 
