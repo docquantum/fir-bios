@@ -148,7 +148,6 @@ uint16_t screen_char(char c)
             break;
         default:
             return 1;
-            break;
     }
     return 0;
 }
