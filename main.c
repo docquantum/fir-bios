@@ -55,7 +55,7 @@ void main(void)
     /* Initialize Screen */
     screen_start();
     select_screen(0);
-    screen_string("FILTER TYPE: TEST");
+    screen_string("FILTER TYPE: NONE");
     select_screen(1);
     screen_string("MUTE: OFF ");
 

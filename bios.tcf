@@ -41,7 +41,7 @@ bios.GBL.MEMORYMODEL = "LARGE";
 
 var trace;
 trace         = bios.LOG.create("trace");
-trace.bufLen  = 1024;
+trace.bufLen  = 512;
 trace.logType = "circular";
 
 /*
@@ -64,10 +64,14 @@ bios.MBX.instance("mbx_audio").comment = "Audio mailbox";
 bios.MBX.instance("mbx_audio").messageSize = 192;
 //bios.SEM.create("sem_procAudio");
 //bios.SEM.instance("sem_procAudio").count = 0;
-//bios.MBX.create("mbx_processedAudio");
-//bios.MBX.instance("mbx_processedAudio").length = 192;
-//bios.MBX.instance("mbx_processedAudio").comment = "Processed audio mailbox";
-//bios.MBX.instance("mbx_processedAudio").messageSize = 2;
+bios.MBX.create("mbx_processedAudio");
+bios.MBX.instance("mbx_processedAudio").length = 2;
+bios.MBX.instance("mbx_processedAudio").comment = "Processed audio mailbox";
+bios.MBX.instance("mbx_processedAudio").messageSize = 256;
+//bios.MBX.create("mbx_fft");
+//bios.MBX.instance("mbx_fft").length = 2;
+//bios.MBX.instance("mbx_fft").comment = "FFT processed audio mailbox";
+//bios.MBX.instance("mbx_fft").messageSize = 256;
 bios.MBX.create("mbx_command");
 bios.MBX.instance("mbx_command").length = 8;
 bios.MBX.instance("mbx_command").comment = "Command mailbox";
@@ -79,8 +83,23 @@ bios.TSK.instance("AUDIO_PROCESSING").priority = 8;
 bios.TSK.create("USER_INTERFACE");
 bios.TSK.instance("USER_INTERFACE").fxn = prog.extern("TSK_UserInterface");
 bios.TSK.instance("USER_INTERFACE").order = 2;
-bios.TSK.instance("USER_INTERFACE").priority = 5;
-bios.TSK.instance("TSK_idle").order = 3;
+bios.TSK.instance("USER_INTERFACE").priority = 6;
+bios.TSK.create("FFT_PROCESSING");
+bios.TSK.instance("FFT_PROCESSING").fxn = prog.extern("TSK_FFT");
+bios.TSK.instance("FFT_PROCESSING").stackSize = 2048;
+bios.TSK.instance("FFT_PROCESSING").order = 3;
+bios.TSK.instance("FFT_PROCESSING").priority = 5;
+bios.TSK.instance("TSK_idle").order = 4;
+bios.MEM.create("CE0");
+bios.MEM.instance("CE0").createHeap = 0;
+bios.MEM.instance("CE0").space = "data";
+bios.MEM.instance("CE0").comment = "SDRAM CE0 Configuration";
+bios.MEM.instance("CE0").base = 0x010000;
+bios.MEM.instance("CE0").len = 0x3F0000;
+bios.MEM.instance("CE0").space = "code/data";
+bios.MEM.USERCOMMANDFILE = 0;
+//bios.MEM.BSSSEG = prog.get("CE0");
+//bios.MEM.STACKSEG = prog.get("CE0");
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 if (config.hasReportedError == false) {

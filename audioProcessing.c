@@ -7,8 +7,6 @@
  *  - mbx_messages: Mailbox to hold messages to control the processing
  */
 
-
-
 #include <std.h>
 
 #include <log.h>
@@ -24,6 +22,7 @@
 #include "myfir.h"
 #include "custom_types.h"
 #include "queue.h"
+#include "FFT.h"
 
 extern MCBSP_Handle aicMcbsp;
 
@@ -31,11 +30,11 @@ extern MCBSP_Handle aicMcbsp;
 extern int16_t lpfCoeff[];
 extern int16_t hpfCoeff[];
 
-static int16_t* filter_coeff;
+const int16_t* filter_coeff;
 static int16_t filter_length = 0;
 static int16_t leftRightFlag = 0;
 static uint16_t muteFlag = 0;
-static int16_t delayLineL[LPF_COEFF_LEN], delayLineR[LPF_COEFF_LEN];
+int16_t delayLineL[LPF_COEFF_LEN], delayLineR[LPF_COEFF_LEN], fftProcessed[256];
 
 /*
  * Toggles the mute flag
@@ -60,6 +59,7 @@ void audioProcessingInit(void)
 {
     memset(delayLineL, 0, LPF_COEFF_LEN);
     memset(delayLineR, 0, LPF_COEFF_LEN);
+    FFT_initialize();
 }
 
 /*
@@ -89,6 +89,26 @@ void SetFilter(command_t type)
 }
 
 /*
+ * BIOS Task to process 256 samples of filtered
+ * data from the AudioProcessing task within an
+ * FFT function.
+ *
+ * FFT Function implemented using Simulink Code Gen.
+ *
+ * This task will push the analyzed data onto another
+ * task to draw on the LCD display.
+ */
+void TSK_FFT()
+{
+    while(1)
+    {
+        MBX_pend(&mbx_processedAudio, FFT_U.In1, SYS_FOREVER);
+        FFT_step();
+        memcpy(fftProcessed, FFT_Y.Out1, 256);
+    }
+}
+
+/*
  * BIOS Task to process incoming audio data
  * Receives 1 msec of audio from the receiver thread
  * to then filter based on the system state.
@@ -99,10 +119,11 @@ void SetFilter(command_t type)
 void TSK_AudioProcessing()
 {
     sample_t processedSample = {LEFT, 0};
-    command_t state = 0;
-    uint16_t i = 0;
+    command_t state = TOGGLE_MUTE;
+    uint16_t i, j = 0;
     Uns old;
     sample_t samples[MBX_AUDIO_LEN];
+    int16_t samplesForFFT[256];
     while(1)
     {
         // wait for data
@@ -115,8 +136,6 @@ void TSK_AudioProcessing()
             else
                 SetFilter(state);
         }
-        else
-            LOG_printf(&trace, "HWI_I2S_Rx: Failed to post to 'mbx_audio'");
         for(i = 0; i < MBX_AUDIO_LEN; i++)
         {
             if (muteFlag)
@@ -134,6 +153,17 @@ void TSK_AudioProcessing()
                 );
             }
             processedSample.channel = samples[i].channel;
+            if (processedSample.channel == LEFT)
+            {
+                samplesForFFT[j] = processedSample.data;
+                j++;
+                if (j >= 256)
+                {
+                    j = 0;
+                    if(!MBX_post(&mbx_processedAudio, samplesForFFT, 0))
+                        LOG_printf(&trace, "TSK_AudioProcessing: Failed to post to 'mbx_processedAudio'");
+                }
+            }
             old = HWI_disable();
             q_push(processedSample);
             HWI_restore(old);
@@ -182,6 +212,7 @@ void HWI_I2S_Rx(void)
  */
 void HWI_I2S_Tx(void)
 {
+    LOG_printf(&trace, "HWI_I2S_Tx: Triggered!");
     static sample_t sample = {LEFT, 0};
     sample = q_pop();
     MCBSP_write16(aicMcbsp, sample.data);
