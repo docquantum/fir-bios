@@ -54,42 +54,61 @@ bios.HWI.instance("HWI_INT6").fxn = prog.extern("HWI_I2S_Rx");
 bios.HWI.instance("HWI_INT6").useDispatcher = 1;
 bios.HWI.instance("HWI_INT6").interruptMask0 = "all";
 bios.HWI.instance("HWI_INT6").interruptMask1 = "all";
+
 bios.HWI.instance("HWI_INT7").fxn = prog.extern("HWI_I2S_Tx");
 bios.HWI.instance("HWI_INT7").useDispatcher = 1;
 bios.HWI.instance("HWI_INT7").interruptMask0 = "all";
 bios.HWI.instance("HWI_INT7").interruptMask1 = "all";
+
 bios.MBX.create("mbx_audio");
 bios.MBX.instance("mbx_audio").length = 2;
 bios.MBX.instance("mbx_audio").comment = "Audio mailbox";
 bios.MBX.instance("mbx_audio").messageSize = 192;
-//bios.SEM.create("sem_procAudio");
-//bios.SEM.instance("sem_procAudio").count = 0;
+
 bios.MBX.create("mbx_processedAudio");
 bios.MBX.instance("mbx_processedAudio").length = 2;
 bios.MBX.instance("mbx_processedAudio").comment = "Processed audio mailbox";
 bios.MBX.instance("mbx_processedAudio").messageSize = 256;
-//bios.MBX.create("mbx_fft");
-//bios.MBX.instance("mbx_fft").length = 2;
-//bios.MBX.instance("mbx_fft").comment = "FFT processed audio mailbox";
-//bios.MBX.instance("mbx_fft").messageSize = 256;
+
+bios.MBX.create("mbx_frameBuffer");
+bios.MBX.instance("mbx_frameBuffer").length = 2;
+bios.MBX.instance("mbx_frameBuffer").comment = "Frames to draw on the screen";
+bios.MBX.instance("mbx_frameBuffer").messageSize = 96;
+
 bios.MBX.create("mbx_command");
 bios.MBX.instance("mbx_command").length = 8;
 bios.MBX.instance("mbx_command").comment = "Command mailbox";
 bios.MBX.instance("mbx_command").messageSize = 1;
+
+bios.LCK.create("i2c_lock");
+
 bios.TSK.create("AUDIO_PROCESSING");
 bios.TSK.instance("AUDIO_PROCESSING").fxn = prog.extern("TSK_AudioProcessing");
 bios.TSK.instance("AUDIO_PROCESSING").order = 1;
 bios.TSK.instance("AUDIO_PROCESSING").priority = 8;
+
 bios.TSK.create("USER_INTERFACE");
 bios.TSK.instance("USER_INTERFACE").fxn = prog.extern("TSK_UserInterface");
+bios.TSK.instance("USER_INTERFACE").stackSize = 512;
 bios.TSK.instance("USER_INTERFACE").order = 2;
-bios.TSK.instance("USER_INTERFACE").priority = 6;
+bios.TSK.instance("USER_INTERFACE").priority = 7;
+
+bios.TSK.create("DISPLAY_MANAGER");
+bios.TSK.instance("DISPLAY_MANAGER").fxn = prog.extern("TSK_DisplayManager");
+bios.TSK.instance("DISPLAY_MANAGER").stackSize = 512;
+bios.TSK.instance("DISPLAY_MANAGER").order = 3;
+bios.TSK.instance("DISPLAY_MANAGER").priority = 6;
+
 bios.TSK.create("FFT_PROCESSING");
 bios.TSK.instance("FFT_PROCESSING").fxn = prog.extern("TSK_FFT");
 bios.TSK.instance("FFT_PROCESSING").stackSize = 2048;
-bios.TSK.instance("FFT_PROCESSING").order = 3;
+bios.TSK.instance("FFT_PROCESSING").sysStackSize = 512;
+bios.TSK.instance("FFT_PROCESSING").order = 4;
 bios.TSK.instance("FFT_PROCESSING").priority = 5;
-bios.TSK.instance("TSK_idle").order = 4;
+
+bios.TSK.instance("TSK_idle").stackSize = 256;
+bios.TSK.instance("TSK_idle").order = 5;
+
 bios.MEM.create("CE0");
 bios.MEM.instance("CE0").createHeap = 0;
 bios.MEM.instance("CE0").space = "data";

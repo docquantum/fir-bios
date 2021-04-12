@@ -34,7 +34,9 @@ const int16_t* filter_coeff;
 static int16_t filter_length = 0;
 static int16_t leftRightFlag = 0;
 static uint16_t muteFlag = 0;
-int16_t delayLineL[LPF_COEFF_LEN], delayLineR[LPF_COEFF_LEN], fftProcessed[256];
+int16_t delayLineL[LPF_COEFF_LEN], delayLineR[LPF_COEFF_LEN];
+
+uint16_t normalize(int16_t value);
 
 /*
  * Toggles the mute flag
@@ -60,6 +62,11 @@ void audioProcessingInit(void)
     memset(delayLineL, 0, LPF_COEFF_LEN);
     memset(delayLineR, 0, LPF_COEFF_LEN);
     FFT_initialize();
+    sample_t sample = {LEFT, -1};
+    uint16_t i = 0;
+    // Buffer Audio
+    for(i=0; i<48; i++)
+        q_push(sample);
 }
 
 /*
@@ -95,17 +102,128 @@ void SetFilter(command_t type)
  *
  * FFT Function implemented using Simulink Code Gen.
  *
- * This task will push the analyzed data onto another
- * task to draw on the LCD display.
+ * This task also generates a frame to be displayed
+ * on the LCD which is pushed to the "Display Manager"
+ * task.
  */
 void TSK_FFT()
 {
+    uint16_t i = 0, j = 0, shift = 0;
+    uint16_t val, low, high;
+    uint16_t fb[96];
+
     while(1)
     {
         MBX_pend(&mbx_processedAudio, FFT_U.In1, SYS_FOREVER);
         FFT_step();
-        memcpy(fftProcessed, FFT_Y.Out1, 256);
+        j = 0;
+        shift=0;
+        for(i=0; i<32; i++)
+        {
+            val = normalize(FFT_Y.Out1[i]);
+            low = 0x00ff & val;
+            high = 0x00ff & (val >> 8);
+
+            if (shift == 1)
+            {
+                // Upper half
+                fb[j] = (high << 8);
+                fb[j+1] = high;
+                // Lower half
+                fb[j+48] = (low << 8);
+                fb[j+49] = low;
+                shift = 0;
+                j+=2;
+            }
+            else
+            {
+                // Upper half
+                fb[j] = (high << 8)| high;
+                fb[j+1] = 0x0000;
+                // Lower half
+                fb[j+48] = (low << 8) | low;
+                fb[j+49] = 0x0000;
+                shift = 1;
+                j++;
+            }
+        }
+        if(!MBX_post(&mbx_frameBuffer, fb, 0))
+            LOG_printf(&trace, "TSK_FFT: Failed to post to 'mbx_frameBuffer'");
     }
+}
+
+/**
+ * "Normalizes" to a display value of 0-16 such that values above
+ * 2000 are capped at 16 and signals are linearly broken up at
+ * increments of 125.
+ */
+uint16_t normalize(int16_t value)
+{
+    if(value >= 2000)
+    {
+        return 0xffff;
+    }
+    else if(value >= 1875)
+    {
+        return 0xfeff;
+    }
+    else if(value >= 1750)
+    {
+        return 0xfcff;
+    }
+    else if(value >= 1625)
+    {
+        return 0xf8ff;
+    }
+    else if(value >= 1500)
+    {
+        return 0xf0ff;
+    }
+    else if(value >= 1375)
+    {
+        return 0xe0ff;
+    }
+    else if(value >= 1250)
+    {
+        return 0xc0ff;
+    }
+    else if(value >= 1125)
+    {
+        return 0x80ff;
+    }
+    else if(value >= 1000)
+    {
+        return 0x00ff;
+    }
+    else if(value >= 875)
+    {
+        return 0x00fe;
+    }
+    else if(value >= 750)
+    {
+        return 0x00fc;
+    }
+    else if(value >= 625)
+    {
+        return 0x00f8;
+    }
+    else if(value >= 500)
+    {
+        return 0x00f0;
+    }
+    else if(value >= 375)
+    {
+        return 0x00e0;
+    }
+    else if(value >= 250)
+    {
+        return 0x00c0;
+    }
+    else if(value >= 125)
+    {
+        return 0x0080;
+    }
+    return 0x0000;
 }
 
 /*
@@ -119,7 +237,7 @@ void TSK_FFT()
 void TSK_AudioProcessing()
 {
     sample_t processedSample = {LEFT, 0};
-    command_t state = TOGGLE_MUTE;
+    command_t command = TOGGLE_MUTE;
     uint16_t i, j = 0;
     Uns old;
     sample_t samples[MBX_AUDIO_LEN];
@@ -129,12 +247,12 @@ void TSK_AudioProcessing()
         // wait for data
         MBX_pend(&mbx_audio, samples, SYS_FOREVER);
         // Pull a command off of the buffer, only process if exists
-        if(MBX_pend(&mbx_command, &state, 0))
+        if(MBX_pend(&mbx_command, &command, 0))
         {
-            if(state == TOGGLE_MUTE)
+            if(command == TOGGLE_MUTE)
                 ToggleMute();
             else
-                SetFilter(state);
+                SetFilter(command);
         }
         for(i = 0; i < MBX_AUDIO_LEN; i++)
         {
@@ -197,11 +315,10 @@ void HWI_I2S_Rx(void)
     }
     if(idx >= MBX_AUDIO_LEN)
     {
+        idx = 0;
         if(!MBX_post(&mbx_audio, samples, 0))
             LOG_printf(&trace, "HWI_I2S_Rx: Failed to post to 'mbx_audio'");
-        idx = 0;
     }
-
 }
 
 /**
@@ -212,7 +329,6 @@ void HWI_I2S_Rx(void)
  */
 void HWI_I2S_Tx(void)
 {
-    LOG_printf(&trace, "HWI_I2S_Tx: Triggered!");
     static sample_t sample = {LEFT, 0};
     sample = q_pop();
     MCBSP_write16(aicMcbsp, sample.data);

@@ -11,9 +11,8 @@
 #include "stdint.h"
 
 void screen_start();
-void select_screen(Uint8 screen);
-void clear_screen(Uint8 screen);
-uint16_t screen_char(char c);
-uint16_t screen_string(char* str);
+void clear_screen();
+uint16_t char_screen(char c);
+uint16_t string_screen(char* str);
 
 #endif /* INCLUDE_GRAPHICS_H_ */

@@ -22,6 +22,8 @@
 #include "led.h"
 #include "custom_types.h"
 
+void TSK_DisplayManager(void);
+
 extern void audioProcessingInit(void);
 extern uint16_t GetMute();
 
@@ -54,10 +56,6 @@ void main(void)
     TurnOnLed(0);
     /* Initialize Screen */
     screen_start();
-    select_screen(0);
-    screen_string("FILTER TYPE: NONE");
-    select_screen(1);
-    screen_string("MUTE: OFF ");
 
     // after main() exits the DSP/BIOS scheduler starts
     LOG_printf(&trace, "Finished Main");
@@ -68,9 +66,12 @@ void TSK_UserInterface(void)
     Uint8 sw1State = 0;
     Uint8 sw2State = 0;
     Uint8 filterType = 1;
+    Uint8 muteState = 0;
     while(1)
     {
+        TSK_sleep(80);
         /* Check SW1 */
+        LCK_pend(&i2c_lock, SYS_FOREVER);
         if(!(EZDSP5502_I2CGPIO_readLine(SW0)))
         {
             if(sw1State)
@@ -79,32 +80,27 @@ void TSK_UserInterface(void)
                 if(filterType >= 4)
                     filterType = 1;
                 MBX_post(&mbx_command, &filterType, SYS_FOREVER);
-                select_screen(0);
                 switch(filterType)
                 {
                     case FILTER_NONE:
                         TurnOnLed(0);
                         TurnOffLed(1);
                         TurnOffLed(2);
-                        screen_string("NONE");
                         break;
                     case FILTER_HPF:
                         TurnOffLed(0);
                         TurnOnLed(1);
                         TurnOffLed(2);
-                        screen_string("HPF ");
                         break;
                     case FILTER_LPF:
                         TurnOffLed(0);
                         TurnOffLed(1);
                         TurnOnLed(2);
-                        screen_string("LPF ");
                         break;
                     default:
                         TurnOnLed(0);
                         TurnOffLed(1);
                         TurnOffLed(2);
-                        screen_string("UNK ");
                         break;
                 }
                 sw1State = 0;
@@ -113,32 +109,33 @@ void TSK_UserInterface(void)
         else
             sw1State = 1;
 
+        LCK_post(&i2c_lock);
+
         /* Check SW2 */
+        LCK_pend(&i2c_lock, SYS_FOREVER);
         if(!(EZDSP5502_I2CGPIO_readLine(SW1)))
         {
             if(sw2State)
             {
                 sw2State = 0;
                 MBX_post(&mbx_command, &sw2State, SYS_FOREVER);
-                select_screen(1);
-                switch(GetMute())
+                muteState = muteState ? 0 : 1;
+                switch(muteState)
                 {
                     case 0:
                         TurnOffLed(3);
-                        screen_string("OFF ");
                         break;
                     case 1:
                         TurnOnLed(3);
-                        screen_string("ON  ");
                         break;
                     default:
                         TurnOffLed(3);
-                        screen_string("UNK ");
                         break;
                 }
             }
         }
         else
             sw2State = 1;
+        LCK_post(&i2c_lock);
     }
 }

@@ -8,36 +8,51 @@
 #include "graphics.h"
 #include "ezdsp5502.h"
 #include "lcd.h"
+#include "bioscfg.h"
+
+/**
+ * Manages the display, writing frames to the LCD
+ */
+void TSK_DisplayManager(void)
+{
+    Uint16 fb[96];
+    while(1)
+    {
+        MBX_pend(&mbx_frameBuffer, fb, SYS_FOREVER);
+        LCK_pend(&i2c_lock, SYS_FOREVER);
+        osd9616_frameBuffer(fb);
+        LCK_post(&i2c_lock);
+    }
+}
 
 void screen_start()
 {
 
     /* Initialize  Display */
-    osd9616_init( );
+    osd9616_init();
 
-    osd9616_send(0x00,0x2e);     // Deactivate Scrolling
-
-    clear_screen(0);
-    clear_screen(1);
+    clear_screen();
 
     return;
 }
 
-void select_screen(Uint8 screen)
+void clear_screen()
 {
-    osd9616_send(0x00,0x00);   // Set low column address
-    osd9616_send(0x00,0x10);   // Set high column address
-    osd9616_send(0x00,0xb0+screen); // Set to page 0
+    // Set pointer back to start
+    // TODO: Figure out how to reset the pointer to start of memory
+    // Fill buffer with 0s
+    Uint16 i, fb[96];
+    for (i=0; i < 96; i++)
+    {
+        fb[i] = 0x0000;
+    }
+    // Send buffer to screen
+    osd9616_frameBuffer(fb);
 }
 
-void clear_screen(Uint8 screen)
-{
-    select_screen(screen);
-    int i;
-    for(i=0; i<128; i++) osd9616_send(0x40, 0x00);
-}
-
-uint16_t screen_char(char c)
+// TODO: switch to the new frame buffer system, and reverse characters
+// TODO: Finish creating missing characters
+uint16_t char_screen(char c)
 {
     switch(c)
     {
@@ -152,7 +167,8 @@ uint16_t screen_char(char c)
     return 0;
 }
 
-uint16_t screen_string(char* str)
+// TODO: switch to the new frame buffer system, and reverse characters
+uint16_t string_screen(char* str)
 {
     int count = 0;
     char* start = str - 1;
@@ -167,10 +183,8 @@ uint16_t screen_string(char* str)
     }
     while (str != start)
     {
-        screen_char(*str);
+        char_screen(*str);
         str--;
     }
     return 0;
 }
-
-//void print_char_at(char c, )

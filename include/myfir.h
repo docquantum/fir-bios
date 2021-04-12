@@ -10,7 +10,7 @@
 
 #define LPF_COEFF_LEN 201
 //#pragma DATA_SECTION(lpfCoeff, ”lpfcoeff”)
-static int16_t lpfCoeff[201] =
+static int16_t lpfCoeff[LPF_COEFF_LEN] =
 {
        310,    -20,    -21,    -23,    -25,    -28,    -31,    -35,    -40,    -44,    -48,    -53,    -57,    -60,    -64,    -66,
        -68,    -69,    -68,    -67,    -65,    -61,    -56,    -50,    -43,    -35,    -25,    -15,     -4,      8,     20,     33,
@@ -29,7 +29,7 @@ static int16_t lpfCoeff[201] =
 
 #define HPF_COEFF_LEN 151
 //#pragma DATA_SECTION(hpfCoeff, ”hpfcoeff”)
-static int16_t hpfCoeff[151] =
+static int16_t hpfCoeff[HPF_COEFF_LEN] =
 {
        286,   -136,   -118,   -109,   -104,   -100,    -94,    -85,    -71,    -53,    -31,     -6,     21,     47,     70,     88,
         99,    102,     95,     80,     55,     24,    -12,    -50,    -86,   -117,   -140,   -152,   -151,   -136,   -108,    -68,

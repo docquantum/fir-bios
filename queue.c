@@ -8,7 +8,7 @@
 
 #include "queue.h"
 
-static sample_t sampleQueue[Q_MAX_SIZE] = {LEFT, -1};
+static sample_t sampleQueue[Q_MAX_SIZE];
 static int16_t head = 0;
 static int16_t tail = 0;
 static int16_t size = 0;
