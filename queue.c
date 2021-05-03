@@ -8,14 +8,14 @@
 
 #include "queue.h"
 
-static sample_t sampleQueue[Q_MAX_SIZE];
+static int16_t sampleQueue[Q_MAX_SIZE];
 static int16_t head = 0;
 static int16_t tail = 0;
 static int16_t size = 0;
 
-sample_t q_pop()
+int16_t q_pop()
 {
-    sample_t popped = {LEFT, 0};
+    int16_t popped = 0;
     if (size == 0)
         return popped;
     popped = sampleQueue[head];
@@ -26,7 +26,7 @@ sample_t q_pop()
     return popped;
 }
 
-bool q_push(sample_t sample)
+int16_t q_push(int16_t sample)
 {
     if (size == Q_MAX_SIZE)
         return 0;
@@ -45,12 +45,12 @@ void q_empty()
     size = 0;
 }
 
-bool q_is_empty()
+int16_t q_is_empty()
 {
     return size == 0;
 }
 
-bool q_is_full()
+int16_t q_is_full()
 {
     return size == Q_MAX_SIZE;
 }

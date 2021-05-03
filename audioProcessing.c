@@ -23,18 +23,21 @@
 #include "custom_types.h"
 #include "queue.h"
 #include "FFT.h"
+#include "cvsd.h"
 
 extern MCBSP_Handle aicMcbsp;
 
 // Pulled from myfir
 extern int16_t lpfCoeff[];
 extern int16_t hpfCoeff[];
+extern int16_t cvsdCoeff[];
 
 const int16_t* filter_coeff;
 static int16_t filter_length = 0;
 static int16_t leftRightFlag = 0;
 static uint16_t muteFlag = 0;
 int16_t delayLineL[LPF_COEFF_LEN], delayLineR[LPF_COEFF_LEN];
+int16_t delayLineCvsdL[CVSD_COEFF_LEN], delayLineCvsdR[CVSD_COEFF_LEN];
 
 uint16_t normalize(int16_t value);
 
@@ -62,11 +65,10 @@ void audioProcessingInit(void)
     memset(delayLineL, 0, LPF_COEFF_LEN);
     memset(delayLineR, 0, LPF_COEFF_LEN);
     FFT_initialize();
-    sample_t sample = {LEFT, -1};
     uint16_t i = 0;
     // Buffer Audio
     for(i=0; i<48; i++)
-        q_push(sample);
+        q_push(-1);
 }
 
 /*
@@ -236,12 +238,13 @@ uint16_t normalize(int16_t value)
  */
 void TSK_AudioProcessing()
 {
-    sample_t processedSample = {LEFT, 0};
+    int16_t processedSample = 0;
     command_t command = TOGGLE_MUTE;
     uint16_t i, j = 0;
     Uns old;
-    sample_t samples[MBX_AUDIO_LEN];
+    int16_t samples[96];
     int16_t samplesForFFT[256];
+    int16_t lrFlag = 0;
     while(1)
     {
         // wait for data
@@ -254,26 +257,41 @@ void TSK_AudioProcessing()
             else
                 SetFilter(command);
         }
-        for(i = 0; i < MBX_AUDIO_LEN; i++)
+        lrFlag = 0;
+        for(i = 0; i < 96; i++)
         {
+
             if (muteFlag)
             {
-                processedSample.data = 0;
+                myfir((const int16_t *) &samples[i],
+                      cvsdCoeff,
+                      &processedSample,
+                      lrFlag ? delayLineR : delayLineL,
+                      1,
+                      CVSD_COEFF_LEN
+                );
+                processedSample = decode_sample(encode_sample(processedSample, lrFlag), lrFlag);
+                myfir((const int16_t *) &processedSample,
+                      cvsdCoeff,
+                      &processedSample,
+                      lrFlag ? delayLineCvsdR : delayLineCvsdL,
+                      1,
+                      CVSD_COEFF_LEN
+                );
             }
             else
             {
-                myfir((const int16_t *) &samples[i].data,
+                myfir((const int16_t *) &samples[i],
                       filter_coeff,
-                      &processedSample.data,
-                      samples[i].channel ? delayLineL : delayLineR,
+                      &processedSample,
+                      lrFlag ? delayLineR : delayLineL,
                       1,
                       filter_length
                 );
             }
-            processedSample.channel = samples[i].channel;
-            if (processedSample.channel == LEFT)
+            if (lrFlag == 0)
             {
-                samplesForFFT[j] = processedSample.data;
+                samplesForFFT[j] = processedSample;
                 j++;
                 if (j >= 256)
                 {
@@ -285,6 +303,7 @@ void TSK_AudioProcessing()
             old = HWI_disable();
             q_push(processedSample);
             HWI_restore(old);
+            lrFlag = !lrFlag;
         }
     }
 }
@@ -297,23 +316,21 @@ void TSK_AudioProcessing()
  */
 void HWI_I2S_Rx(void)
 {
-    static sample_t samples[MBX_AUDIO_LEN];
+    static int16_t samples[96];
     static uint16_t idx = 0;
     if (leftRightFlag == 0)
     {
-        samples[idx].data = MCBSP_read16(aicMcbsp);
-        samples[idx].channel = LEFT;
+        samples[idx] = MCBSP_read16(aicMcbsp);
         leftRightFlag = 1;
         idx++;
     }
     else
     {
-        samples[idx].data = MCBSP_read16(aicMcbsp);
-        samples[idx].channel = RIGHT;
+        samples[idx] = MCBSP_read16(aicMcbsp);
         leftRightFlag = 0;
         idx++;
     }
-    if(idx >= MBX_AUDIO_LEN)
+    if(idx >= 96)
     {
         idx = 0;
         if(!MBX_post(&mbx_audio, samples, 0))
@@ -329,7 +346,7 @@ void HWI_I2S_Rx(void)
  */
 void HWI_I2S_Tx(void)
 {
-    static sample_t sample = {LEFT, 0};
+    static int16_t sample = 0;
     sample = q_pop();
-    MCBSP_write16(aicMcbsp, sample.data);
+    MCBSP_write16(aicMcbsp, sample);
 }

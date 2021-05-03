@@ -11,16 +11,16 @@
 #include "custom_types.h"
 #include "stdint.h"
 
-#define Q_MAX_SIZE (MBX_AUDIO_LEN * 2)
+#define Q_MAX_SIZE 96
 
-sample_t q_pop();
+int16_t q_pop();
 
-bool q_push(sample_t sample);
+int16_t q_push(int16_t sample);
 
 void q_empty();
 
-bool q_is_empty();
+int16_t q_is_empty();
 
-bool q_is_full();
+int16_t q_is_full();
 
 #endif /* INCLUDE_QUEUE_H_BAK_ */

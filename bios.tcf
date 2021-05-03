@@ -63,7 +63,7 @@ bios.HWI.instance("HWI_INT7").interruptMask1 = "all";
 bios.MBX.create("mbx_audio");
 bios.MBX.instance("mbx_audio").length = 2;
 bios.MBX.instance("mbx_audio").comment = "Audio mailbox";
-bios.MBX.instance("mbx_audio").messageSize = 192;
+bios.MBX.instance("mbx_audio").messageSize = 96;
 
 bios.MBX.create("mbx_processedAudio");
 bios.MBX.instance("mbx_processedAudio").length = 2;

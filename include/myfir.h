@@ -43,6 +43,13 @@ static int16_t hpfCoeff[HPF_COEFF_LEN] =
        -94,   -100,   -104,   -109,   -118,   -136,    286,
 };
 
+#define CVSD_COEFF_LEN 23
+static int16_t cvsdCoeff[CVSD_COEFF_LEN] =
+{
+      -150,    399,    866,   1037,    455,   -782,  -1814,  -1448,    966,   4832,   8428,   9893,   8428,   4832,    966,  -1448,
+     -1814,   -782,    455,   1037,    866,    399,   -150,
+};
+
 void myfir(const int16_t* input, const int16_t* filterCoeffs, int16_t* output,
            int16_t* delayLine, uint16_t numberOfInputSamples,
            uint16_t numberOfFilterCoeffs);
